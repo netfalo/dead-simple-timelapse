@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      html, body {
+          height: 100%;
+          width: 100%;
+          margin: 0;
+      }
+      canvas {
+          height: 480px;
+          width: 640px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div id="controls">
+      <input id="images" type="file" accept=".jpeg,.jpg" multiple>
+    </div>
+    <script type="application/javascript">
+      const readUploadedFileAsDataUrl = (inputFile) => {
+          const reader = new FileReader();
+
+          return new Promise((resolve, reject) => {
+              reader.onerror = () => {
+                  reader.abort();
+                  reject(new DOMException("Problem parsing input file."));
+              };
+
+              reader.onload = () => {
+                  resolve(reader.result);
+              };
+              reader.readAsDataURL(inputFile)
+          });
+      };
+
+      const loadDataUrlAsImage = (dataUrl) => {
+          const img = new Image();
+          return new Promise((resolve, reject) => {
+              img.onerror = () => {
+                  img.abort();
+                  reject(new DOMException("Problem loading image"));
+              };
+
+              img.onload = () => {
+                  resolve(img);
+              }
+              img.src = dataUrl;
+          })
+      }
+
+      const startAnimation = (frames) => {
+          const canvas = document.getElementById("canvas");
+          const context = canvas.getContext('2d');
+          let index = 0;
+          let size = frames.length;
+
+          var stream = canvas.captureStream(25);
+          const mediaRecorder = new MediaRecorder(stream);
+
+          mediaRecorder.ondataavailable = (event) => {
+              var blob = new Blob([event.data], {
+                  type: "video/webm"
+              });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement("a");
+              document.body.appendChild(a);
+              a.style = "display: none";
+              a.href = url;
+              a.download = "test.webm";
+              a.click();
+              window.URL.revokeObjectURL(url);
+          };
+
+          mediaRecorder.start();
+          const drawFrame = () => {
+              const frame = frames[index % size];
+              context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+              index = (index + 1) % size;
+              if (index == 0 && mediaRecorder.state == "recording") {
+                  mediaRecorder.stop();
+              }
+          }
+
+          setInterval(drawFrame, 40);
+      }
+      
+      const images = document.getElementById("images")
+      images.onchange = function() {
+          const frames = [];
+          const promises = [];
+          for (const image of images.files) {
+              const promise = readUploadedFileAsDataUrl(image)
+                    .then(data => loadDataUrlAsImage(data))
+                    .then(image => frames.push(image));
+              promises.push(promise);
+          }
+          Promise.all(promises)
+              .then(() => startAnimation(frames));
+      }
+
+      const initCanvas = () => {
+          const canvas = document.getElementById("canvas");
+          const context = canvas.getContext('2d');
+          canvas.width = canvas.clientWidth;
+          canvas.height = canvas.clientHeight;
+          context.drawImage(canvas, 0, 0, canvas.width, canvas.height);
+      }
+      initCanvas();
+    </script>
+  </body>
+</html>
