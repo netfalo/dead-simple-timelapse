@@ -11,15 +11,29 @@
       canvas {
           height: 480px;
           width: 640px;
+          display: block;
+          margin: auto;
+      }
+      #content, #controls {
+          display: block;
+          margin: auto;
+          width: 50%;
       }
     </style>
   </head>
   <body>
-    <div id="content">
-      <canvas id="canvas"></canvas>
+    <div class="row">
+      <div id="content">
+        <canvas id="canvas"></canvas>
+      </div>
     </div>
-    <div id="controls">
-      <input id="images" type="file" accept=".jpeg,.jpg" multiple>
+    <div class="row">
+      <div id="controls">
+        <label for="images"></label>
+        <input id="images" type="file" accept=".jpeg,.jpg" multiple>
+        <label for="burnDateTime">Burn datetime</label>
+        <input id="burnDateTime" type="checkbox">
+      </div>
     </div>
     <script type="application/javascript">
       const readUploadedFileAsDataUrl = (inputFile) => {
@@ -32,13 +46,13 @@
               };
 
               reader.onload = () => {
-                  resolve(reader.result);
+                  resolve({fileInfo: inputFile, data: reader.result});
               };
               reader.readAsDataURL(inputFile)
           });
       };
 
-      const loadDataUrlAsImage = (dataUrl) => {
+      const loadDataUrlAsImage = (file) => {
           const img = new Image();
           return new Promise((resolve, reject) => {
               img.onerror = () => {
@@ -47,15 +61,16 @@
               };
 
               img.onload = () => {
-                  resolve(img);
+                  resolve({img: img, fileInfo: file.fileInfo});
               }
-              img.src = dataUrl;
+              img.src = file.data;
           })
       }
 
       const startAnimation = (frames) => {
           const canvas = document.getElementById("canvas");
           const context = canvas.getContext('2d');
+          context.font = "30px Arial";
           let index = 0;
           let size = frames.length;
 
@@ -79,7 +94,10 @@
           mediaRecorder.start();
           const drawFrame = () => {
               const frame = frames[index % size];
-              context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+              context.drawImage(frame.img, 0, 0, canvas.width, canvas.height);
+              if (document.getElementById("burnDateTime").checked) {
+                  context.fillText(new Date(frame.fileInfo.lastModified).toLocaleString(), 0, 25)
+              }
               index = (index + 1) % size;
               if (index == 0 && mediaRecorder.state == "recording") {
                   mediaRecorder.stop();
